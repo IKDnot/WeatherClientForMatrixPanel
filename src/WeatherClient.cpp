@@ -58,7 +58,26 @@ String WeatherClient::getWeatherDescription() {
 }
 
 String WeatherClient::getDisplayLabel() {
-  return _weather.isForecast ? String(_weather.forecastHours) + "h" : "Now";
+  if (_time.epochTime < DeviceConfiguration::kMinimumValidEpoch) {
+    return "----/--/--";  // NTP未取得
+  }
+
+  const time_t epoch = static_cast<time_t>(_time.epochTime);
+  struct tm timeInfo;
+  gmtime_r(&epoch, &timeInfo);
+
+  char buffer[16];
+  strftime(buffer, sizeof(buffer), "%Y/%m/%d", &timeInfo);
+  return String(buffer);
+}
+
+String WeatherClient::getForecastHour() {
+  if (_weather.isForecast) {
+    char buffer[20];
+    snprintf(buffer, sizeof(buffer), "+%uh", _weather.forecastHours);
+    return String(buffer);
+  }
+  return "now";
 }
 
 ulong WeatherClient::getEpochTime() {
@@ -67,6 +86,10 @@ ulong WeatherClient::getEpochTime() {
 
 String WeatherClient::getFormattedTime() {
   return _time.formattedTime;
+}
+
+bool WeatherClient::getIsForecastMode() {
+  return _weather.isForecast;
 }
 
 bool WeatherClient::update() {
@@ -201,6 +224,14 @@ bool WeatherClient::fetchWeatherData(bool forecastMode, uint8_t forecastHours) {
 }
 
 bool WeatherClient::fetchTimeData() {
+  if (!_ntp.isTimeSet()) {
+    if (!_ntp.forceUpdate()) {
+      Serial.println("NTP sync failed");
+      return false;
+    }
+  } else {
+    _ntp.update();  // 更新間隔(既定60秒)が過ぎていれば再同期
+  }
   _time.epochTime = _ntp.getEpochTime();
   _time.formattedTime = _ntp.getFormattedTime();
   return true;

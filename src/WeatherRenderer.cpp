@@ -17,9 +17,9 @@ constexpr uint16_t kDrizzleCategory = 3;
 constexpr uint16_t kRainCategory = 5;
 constexpr uint16_t kSnowCategory = 6;
 constexpr uint16_t kCloudCategory = 8;
-constexpr uint8_t kTemperatureBufferSize = 10;
-constexpr char kMaximumTemperatureFormat[] = "Max: %2.1f";
-constexpr char kMinimumTemperatureFormat[] = "Min: %2.1f";
+constexpr uint8_t kTemperatureBufferSize = 16;
+constexpr char kTemperatureFormat[] = "%2.1f";
+constexpr char kCurrentTemperatureFormat[] = "Now:%2.1f";
 
 const uint8_t kSunnyIcon[] PROGMEM = {0xFF, 0xFE, 0x7F, 0xFF, 0xFF, 0xFE, 0x7F, 0xFF, 0xFF, 0x7E, 0x7E, 0xFF, 0xFF, 0x3E, 0x7C, 0xFF, 0xFF, 0xBE, 0x7D, 0xFF, 0xFF, 0x9F, 0xF9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xCF, 0xF8, 0x1F, 0xF3, 0xE3, 0xE0, 0x07, 0xC7, 0xFB, 0xC0, 0x03, 0xDF, 0xFF, 0x80, 0x01, 0xFF, 0xFF, 0x80, 0x01, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0x07, 0x00, 0x00, 0xE0, 0x07, 0x00, 0x00, 0xE0, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x00, 0x00, 0xFF, 0xFF, 0x80, 0x01, 0xFF, 0xFF, 0x80, 0x01, 0xFF, 0xFB, 0xC0, 0x03, 0xDF, 0xE3, 0xE0, 0x07, 0xC7, 0xCF, 0xF8, 0x1F, 0xF3, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0x9F, 0xF9, 0xFF, 0xFF, 0xBE, 0x7D, 0xFF, 0xFF, 0x3E, 0x7C, 0xFF, 0xFF, 0x7E, 0x7E, 0xFF, 0xFF, 0xFE, 0x7F, 0xFF, 0xFF, 0xFE, 0x7F, 0xFF};
 const uint8_t kCloudIcon[] PROGMEM = {0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xE0, 0x1F, 0xFF, 0xFF, 0x9F, 0xCF, 0xFF, 0xFF, 0x3F, 0xF7, 0xFF, 0xFF, 0x7F, 0xF3, 0xFF, 0xFE, 0xFF, 0xFB, 0xFF, 0xFE, 0xFF, 0xFD, 0xFF, 0xFC, 0xFF, 0xFD, 0x7F, 0xFD, 0xFF, 0xFC, 0x0F, 0xF1, 0xFF, 0xFF, 0xE3, 0xC7, 0xFF, 0xFF, 0xF9, 0xDF, 0xFF, 0xFF, 0xF9, 0xBF, 0xFF, 0xFF, 0xFD, 0xBF, 0xFF, 0xFF, 0xFC, 0x3F, 0xFF, 0xFF, 0xFC, 0x3F, 0xFF, 0xFF, 0xFC, 0x3F, 0xFF, 0xFF, 0xFD, 0xBF, 0xFF, 0xFF, 0xFD, 0x9F, 0xFF, 0xFF, 0xF9, 0xCF, 0xFF, 0xFF, 0xF3, 0xE0, 0x00, 0x00, 0x0F, 0xFC, 0x00, 0x00, 0x7F, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF};
@@ -41,7 +41,7 @@ uint16_t WeatherRenderer::textColorForWeather(uint weatherId) {
       return _panel.color444(kColorMaximum, kColorMaximum, kNoColor);
     case kDrizzleCategory:
     case kRainCategory:
-      return _panel.color444(kNoColor, kNoColor, kColorMaximum);
+      return _panel.color444(kNoColor, kColorMaximum, kColorMaximum);
     case kSnowCategory:
       return _panel.color444(kColorMaximum, kColorMaximum, kColorMaximum);
     case kCloudCategory:
@@ -88,10 +88,18 @@ const uint8_t* WeatherRenderer::iconForWeather(uint weatherId) const {
 
 void WeatherRenderer::renderWeather(WeatherClient& weather) {
   _panel.fillScreen(_panel.color444(kNoColor, kNoColor, kNoColor));
-  _panel.setCursor(0, 0);
+  _panel.setCursor(0, DeviceConfiguration::kTextSize *
+                          DeviceConfiguration::kTextLineHeightPixels *
+                          DeviceConfiguration::kWeatherHourLineIndex * 
+                          0.5);
   _panel.setTextSize(DeviceConfiguration::kTextSize);
   _panel.setTextColor(_panel.color444(kColorMaximum, kColorMaximum, kColorMaximum));
   _panel.println(weather.getDisplayLabel().c_str());
+
+  // _panel.setCursor(0, DeviceConfiguration::kTextSize *
+  //                         DeviceConfiguration::kTextLineHeightPixels *
+  //                         DeviceConfiguration::kWeatherHourLineIndex);
+  // _panel.println(weather.getForecastHour().c_str());
 
   _panel.setCursor(0, DeviceConfiguration::kTextSize *
                           DeviceConfiguration::kTextLineHeightPixels *
@@ -99,23 +107,40 @@ void WeatherRenderer::renderWeather(WeatherClient& weather) {
   _panel.setTextColor(textColorForWeather(weather.getWeatherId()));
   _panel.println(weather.getWeather().c_str());
 
-  char maximumTemperature[kTemperatureBufferSize] = {};
-  char minimumTemperature[kTemperatureBufferSize] = {};
-  snprintf(maximumTemperature, sizeof(maximumTemperature), kMaximumTemperatureFormat,
-           weather.getMaxTemperature());
-  snprintf(minimumTemperature, sizeof(minimumTemperature), kMinimumTemperatureFormat,
-           weather.getMinTemperature());
+  char temperature[kTemperatureBufferSize] = {};
 
-  _panel.setCursor(0, DeviceConfiguration::kTextSize *
-                          DeviceConfiguration::kTextLineHeightPixels *
-                          DeviceConfiguration::kMaximumTemperatureLineIndex);
+// 気温を描画する開始座標
+int16_t x = 0;
+int16_t y = DeviceConfiguration::kTextSize * DeviceConfiguration::kTextLineHeightPixels * DeviceConfiguration::kMaximumTemperatureLineIndex;
+
+if (weather.getIsForecastMode()) {
+  // --- 1. 最高気温の数字だけを描画 ---
+  _panel.setCursor(x, y);
+  _panel.setTextColor(_panel.color444(kColorMaximum, kNoColor, kNoColor)); // 赤
+  snprintf(temperature, sizeof(temperature), kTemperatureFormat, weather.getMaxTemperature());
+  _panel.print(temperature); 
+
+  // --- 2. スラッシュの描画 ---
+  _panel.setTextColor(_panel.color444(kColorMaximum, kColorMaximum, kColorMaximum)); // 白
+  _panel.print("/");
+
+  // --- 3. 最低気温の数字を描画 ---
+  _panel.setTextColor(_panel.color444(kNoColor, kColorMaximum, kColorMaximum)); // 青
+  snprintf(temperature, sizeof(temperature), kTemperatureFormat, weather.getMinTemperature());
+  _panel.println(temperature);
+
+} else {
+  // 通常モード（最高気温のみ）
+  _panel.setCursor(x, y);
   _panel.setTextColor(_panel.color444(kColorMaximum, kNoColor, kNoColor));
-  _panel.println(maximumTemperature);
-  _panel.setCursor(0, DeviceConfiguration::kTextSize *
-                          DeviceConfiguration::kTextLineHeightPixels *
-                          DeviceConfiguration::kMinimumTemperatureLineIndex);
-  _panel.setTextColor(_panel.color444(kNoColor, kColorMaximum, kColorMaximum));
-  _panel.println(minimumTemperature);
+  snprintf(temperature, sizeof(temperature), kTemperatureFormat, weather.getMaxTemperature());
+  _panel.print(temperature);
+
+  int16_t currentX = _panel.getCursorX();
+  _panel.drawRect(currentX + 1, y + 1, 2, 2, _panel.color444(kColorMaximum, kNoColor, kNoColor));
+  _panel.setCursor(currentX + 4, y);
+  _panel.println("C");
+}
 
   _panel.drawBitmap(DeviceConfiguration::kWeatherIconX,
                     DeviceConfiguration::kWeatherIconY,

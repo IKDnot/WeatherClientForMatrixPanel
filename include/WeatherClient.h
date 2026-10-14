@@ -30,8 +30,10 @@ class WeatherClient {
     String getWeather();
     String getWeatherDescription();
     String getDisplayLabel();
+    String getForecastHour();
     ulong getEpochTime();
     String getFormattedTime();
+    bool getIsForecastMode();
     bool update();
     bool update(bool forecastMode, uint8_t forecastHours);
 
